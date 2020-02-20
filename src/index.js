@@ -29,34 +29,36 @@ fs.readFile(path.resolve(__dirname, "..", file), "utf-8", (err, data) => {
 
   const bookPoints = subheader.split(" ").map(e => parseInt(e));
 
-  const libraries = rest.reduce((prev, curr, index, src) => {
-    if (index % 2 === 0) {
-      const [numOfLibraryBooks, signUp, shipCapacity] = curr
-        .split(" ")
-        .map(e => parseInt(e));
+  const libraries = rest
+    .reduce((prev, curr, index, src) => {
+      if (index % 2 === 0) {
+        const [numOfLibraryBooks, signUp, shipCapacity] = curr
+          .split(" ")
+          .map(e => parseInt(e));
 
-      const libraryBooks = src[index + 1]
-        .split(" ")
-        .map(e => parseInt(e))
-        .sort((a, b) => bookPoints[b] - bookPoints[a]);
+        const libraryBooks = src[index + 1]
+          .split(" ")
+          .map(e => parseInt(e))
+          .sort((a, b) => bookPoints[b] - bookPoints[a]);
 
-      return [
-        ...prev,
-        {
-          index: index / 2,
-          libraryBooks,
-          numOfLibraryBooks,
-          signUp,
-          shipCapacity,
-          maxPoints: libraryBooks.reduce(
-            (acc, book) => acc + bookPoints[book],
-            0
-          )
-        }
-      ];
-    }
-    return prev;
-  }, []);
+        return [
+          ...prev,
+          {
+            index: index / 2,
+            libraryBooks,
+            numOfLibraryBooks,
+            signUp,
+            shipCapacity,
+            maxPoints: libraryBooks.reduce(
+              (acc, book) => acc + bookPoints[book],
+              0
+            )
+          }
+        ];
+      }
+      return prev;
+    }, [])
+    .sort((a, b) => b.maxPoints - a.maxPoints);
 
   console.log({ numOfBooks, numOfLibraries, numOfDays, bookPoints, libraries });
 
