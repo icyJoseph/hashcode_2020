@@ -15,9 +15,6 @@ const printOut = data => {
 
 fs.readFile(path.resolve(__dirname, "..", file), "utf-8", (err, data) => {
   if (err) return console.log("Read Error: ", err);
-  console.log(data);
-
-  // solve here
 
   const scannedBooks = new Set();
 
@@ -41,6 +38,11 @@ fs.readFile(path.resolve(__dirname, "..", file), "utf-8", (err, data) => {
           .map(e => parseInt(e))
           .sort((a, b) => bookPoints[b] - bookPoints[a]);
 
+        const maxPoints = libraryBooks.reduce(
+          (acc, book) => acc + bookPoints[book],
+          0
+        );
+
         return [
           ...prev,
           {
@@ -49,10 +51,7 @@ fs.readFile(path.resolve(__dirname, "..", file), "utf-8", (err, data) => {
             numOfLibraryBooks,
             signUp,
             shipCapacity,
-            maxPoints: libraryBooks.reduce(
-              (acc, book) => acc + bookPoints[book],
-              0
-            )
+            maxPoints
           }
         ];
       }
@@ -97,8 +96,6 @@ fs.readFile(path.resolve(__dirname, "..", file), "utf-8", (err, data) => {
     .join("\n");
 
   const toPrint = [output.length, rows].join("\n");
-
-  // console.log(toPrint);
 
   printOut(toPrint);
 });
