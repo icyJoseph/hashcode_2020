@@ -18,7 +18,7 @@ const printOut = output => {
   fs.writeFile(outputFile, data, err => {
     if (err) return console.log("Print out: ", err);
 
-    console.log(`Saved ${outputFile}`);
+    console.log(`Saved to ${outputFile}`);
   });
 };
 
@@ -110,10 +110,11 @@ function parseInputData(data) {
   return { numOfBooks, numOfLibraries, numOfDays, bookPoints, libraries };
 }
 
-function updateLibraries({ libraries, bookSet, daysLeft, bookPoints }) {
+function updateLibraries({ libraries, scannedBooks, daysLeft, bookPoints }) {
   return libraries.map(library => {
+    //  stop considering already scanned books
     const libraryBooks = library.libraryBooks.filter(
-      book => !bookSet.has(book)
+      book => !scannedBooks.has(book)
     );
 
     const availableScanningTime = daysLeft - library.signUp;
@@ -140,18 +141,18 @@ function sortLibraries({ libraries }) {
     .sort((b, a) => b.signUp - a.signUp);
 }
 
-function addLibraryToOutput({ output, library, bookSet }) {
+function addLibraryToOutput({ output, library, scannedBooks }) {
   const qTyOfBooksToShip = Math.floor(
     library.availableScanningTime / library.shipCapacity
   );
 
   const booksToShip = library.libraryBooks
-    .filter(e => !bookSet.has(e))
+    .filter(e => !scannedBooks.has(e))
     .slice(0, qTyOfBooksToShip);
 
   if (booksToShip.length) {
     // update the output
-    booksToShip.forEach(book => bookSet.add(book));
+    booksToShip.forEach(book => scannedBooks.add(book));
     output.push({ ...library, booksToShip });
   }
 }
@@ -194,7 +195,7 @@ fs.readFile(path.resolve(__dirname, "..", file), "utf-8", (err, data) => {
     addLibraryToOutput({
       output,
       library: currLib,
-      bookSet: scannedBooks
+      scannedBooks
     });
 
     // update library cycle
@@ -202,7 +203,7 @@ fs.readFile(path.resolve(__dirname, "..", file), "utf-8", (err, data) => {
 
     libraries = updateLibraries({
       libraries: rest,
-      bookSet: scannedBooks,
+      scannedBooks,
       daysLeft,
       bookPoints
     });
