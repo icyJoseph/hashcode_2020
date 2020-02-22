@@ -24,7 +24,7 @@ const printOut = output => {
 
 function estimatePoints(output, bookPoints) {
   console.log(
-    "Estimated points",
+    "Estimated points:",
     output.reduce(
       (acc, curr) =>
         acc + curr.booksToShip.reduce((acc, curr) => acc + bookPoints[curr], 0),
@@ -89,8 +89,6 @@ function parseInputData(data) {
         0
       );
 
-      const availableScanningTime = numOfDays - signUp;
-
       return [
         ...prev,
         {
@@ -100,7 +98,7 @@ function parseInputData(data) {
           signUp,
           shipCapacity,
           maxPoints,
-          availableScanningTime
+          availableScanningTime: numOfDays
         }
       ];
     }
