@@ -89,6 +89,8 @@ function parseInputData(data) {
         0
       );
 
+      const maxShippableBooks = (numOfDays - signUp) * shipCapacity;
+
       return [
         ...prev,
         {
@@ -98,7 +100,8 @@ function parseInputData(data) {
           signUp,
           shipCapacity,
           maxPoints,
-          availableScanningTime: numOfDays
+          availableScanningTime: numOfDays - signUp,
+          maxShippableBooks
         }
       ];
     }
@@ -109,34 +112,38 @@ function parseInputData(data) {
 }
 
 function updateLibraries({ libraries, scannedBooks, daysLeft, bookPoints }) {
-  return libraries.map(library => {
-    //  stop considering already scanned books
-    const libraryBooks = library.libraryBooks.filter(
-      book => !scannedBooks.has(book)
-    );
+  return libraries
+    .map(library => {
+      //  stop considering already scanned books
+      const libraryBooks = library.libraryBooks.filter(
+        book => !scannedBooks.has(book)
+      );
 
-    const availableScanningTime = daysLeft - library.signUp;
+      const availableScanningTime = daysLeft - library.signUp;
 
-    const maxPoints = libraryBooks.reduce(
-      (acc, book) => acc + bookPoints[book],
-      0
-    );
+      const maxShippableBooks = availableScanningTime * library.shipCapacity;
 
-    return { ...library, libraryBooks, maxPoints, availableScanningTime };
-  });
+      const maxPoints = libraryBooks
+        .slice(0, maxShippableBooks)
+        .reduce((acc, book) => acc + bookPoints[book], 0);
+
+      return {
+        ...library,
+        numOfBooks: libraryBooks.length,
+        libraryBooks,
+        maxPoints,
+        availableScanningTime,
+        maxShippableBooks
+      };
+    })
+    .filter(e => e.availableScanningTime > 0);
 }
 
 function sortLibraries({ libraries }) {
   const compareFn = (b, a) => {
-    const ret =
-      b.availableScanningTime * b.shipCapacity * b.numOfBooks -
-      a.availableScanningTime * a.shipCapacity * a.numOfBooks;
-    return ret;
+    return a.signUp - b.signUp;
   };
-  return libraries
-    .slice(0)
-    .sort(compareFn)
-    .sort((b, a) => b.signUp - a.signUp);
+  return libraries.slice(0).sort(compareFn);
 }
 
 function addLibraryToOutput({ output, library, scannedBooks }) {
@@ -183,11 +190,16 @@ fs.readFile(path.resolve(__dirname, "..", file), "utf-8", (err, data) => {
   while (daysLeft >= 0) {
     const [currLib, ...rest] = libraries;
 
-    console.log({ daysLeft, librariesLeft: rest.length, current: currLib });
-
-    if (!currLib || currLib.availableScanningTime <= 0) {
+    if (!currLib) {
+      console.log("No more libraries are possible");
       break;
     }
+
+    console.log({
+      daysLeft,
+      librariesLeft: numOfLibraries - output.length,
+      current: currLib
+    });
 
     // add library to output
     addLibraryToOutput({
@@ -215,7 +227,7 @@ fs.readFile(path.resolve(__dirname, "..", file), "utf-8", (err, data) => {
 
   console.log({
     scannedBooks: [...scannedBooks].length,
-    signedUpLibraries: libraries.length,
+    signedUpLibraries: output.length,
     totalBooks: numOfBooks,
     totalLibraries: numOfLibraries,
     ...stats
