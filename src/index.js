@@ -3,6 +3,8 @@ const path = require("path");
 
 const [, , file] = process.argv;
 
+let k = 0.1;
+
 const printOut = output => {
   const outputFile = file.replace("input", "output").replace(".txt", ".out");
 
@@ -23,14 +25,13 @@ const printOut = output => {
 };
 
 function estimatePoints(output, bookPoints) {
-  console.log(
-    "Estimated points:",
-    output.reduce(
-      (acc, curr) =>
-        acc + curr.booksToShip.reduce((acc, curr) => acc + bookPoints[curr], 0),
-      0
-    )
+  const estimate = output.reduce(
+    (acc, curr) =>
+      acc + curr.booksToShip.reduce((acc, curr) => acc + bookPoints[curr], 0),
+    0
   );
+  console.log("Estimated points:", estimate);
+  return estimate;
 }
 
 function genStats({ libraries, numOfDays }) {
@@ -84,12 +85,11 @@ function parseInputData(data) {
         (a, b) => bookPoints[b] - bookPoints[a]
       );
 
-      const maxPoints = libraryBooks.reduce(
-        (acc, book) => acc + bookPoints[book],
-        0
-      );
-
       const maxShippableBooks = (numOfDays - signUp) * shipCapacity;
+
+      const maxPoints = libraryBooks
+        .slice(0, maxShippableBooks)
+        .reduce((acc, book) => acc + bookPoints[book], 0);
 
       return [
         ...prev,
@@ -140,20 +140,28 @@ function updateLibraries({ libraries, scannedBooks, daysLeft, bookPoints }) {
 }
 
 function sortLibraries({ libraries }) {
-  const compareFn = (b, a) => {
+  const compareFn = (a, b) => {
     return a.signUp - b.signUp;
   };
   return libraries.slice(0).sort(compareFn);
 }
 
-function addLibraryToOutput({ output, library, scannedBooks }) {
-  const qTyOfBooksToShip = Math.floor(
-    library.availableScanningTime / library.shipCapacity
-  );
+function selectLibrary({ libraries }) {
+  const max = Math.max(...libraries.map(({ maxPoints }) => maxPoints));
 
+  const index = libraries.findIndex(({ maxPoints }) => maxPoints >= k * max);
+
+  return [
+    libraries[index],
+    ...libraries.slice(0, index),
+    ...libraries.slice(index + 1)
+  ];
+}
+
+function addLibraryToOutput({ output, library, scannedBooks }) {
   const booksToShip = library.libraryBooks
     .filter(e => !scannedBooks.has(e))
-    .slice(0, qTyOfBooksToShip);
+    .slice(0, library.shipCapacity * library.availableScanningTime);
 
   if (booksToShip.length) {
     // update the output
@@ -165,71 +173,81 @@ function addLibraryToOutput({ output, library, scannedBooks }) {
 fs.readFile(path.resolve(__dirname, "..", file), "utf-8", (err, data) => {
   if (err) return console.log("Read Error: ", err);
 
+  let bestEstimate = 0;
   // save all scanned books to this set
-  const scannedBooks = new Set();
+  while (k < 1) {
+    const scannedBooks = new Set();
 
-  const {
-    numOfBooks,
-    numOfLibraries,
-    numOfDays,
-    bookPoints,
-    ...restOf
-  } = parseInputData(data);
+    const {
+      numOfBooks,
+      numOfLibraries,
+      numOfDays,
+      bookPoints,
+      ...restOf
+    } = parseInputData(data);
 
-  let { libraries } = restOf;
+    let { libraries } = restOf;
 
-  const stats = genStats({ libraries, numOfDays });
+    // const stats = genStats({ libraries, numOfDays });
 
-  // console.log({ numOfBooks, numOfLibraries, numOfDays, bookPoints, libraries });
+    // console.log({ numOfBooks, numOfLibraries, numOfDays, bookPoints, libraries });
 
-  let daysLeft = numOfDays;
-  let output = [];
-
-  libraries = sortLibraries({ libraries });
-
-  while (daysLeft >= 0) {
-    const [currLib, ...rest] = libraries;
-
-    if (!currLib) {
-      console.log("No more libraries are possible");
-      break;
-    }
-
-    console.log({
-      daysLeft,
-      librariesLeft: numOfLibraries - output.length,
-      current: currLib
-    });
-
-    // add library to output
-    addLibraryToOutput({
-      output,
-      library: currLib,
-      scannedBooks
-    });
-
-    // update library cycle
-    daysLeft = daysLeft - currLib.signUp;
-
-    libraries = updateLibraries({
-      libraries: rest,
-      scannedBooks,
-      daysLeft,
-      bookPoints
-    });
+    let daysLeft = numOfDays;
+    let output = [];
 
     libraries = sortLibraries({ libraries });
+
+    while (daysLeft >= 0) {
+      const [currLib, ...rest] = selectLibrary({ libraries });
+
+      if (!currLib) {
+        console.log("No more libraries are possible");
+        break;
+      }
+
+      // console.log({
+      //   daysLeft,
+      //   librariesLeft: numOfLibraries - output.length,
+      //   current: currLib
+      // });
+
+      // add library to output
+      addLibraryToOutput({
+        output,
+        library: currLib,
+        scannedBooks
+      });
+
+      // update library cycle
+      daysLeft = daysLeft - currLib.signUp;
+
+      libraries = updateLibraries({
+        libraries: rest,
+        scannedBooks,
+        daysLeft,
+        bookPoints
+      });
+
+      libraries = sortLibraries({ libraries });
+    }
+
+    const estimate = estimatePoints(output, bookPoints);
+    if (estimate > bestEstimate) {
+      bestEstimate = estimate;
+      printOut(output);
+    }
+    console.log({ k, estimate });
+    k = k + 0.1;
   }
 
-  estimatePoints(output, bookPoints);
+  // printOut(output);
 
-  printOut(output);
-
-  console.log({
-    scannedBooks: [...scannedBooks].length,
-    signedUpLibraries: output.length,
-    totalBooks: numOfBooks,
-    totalLibraries: numOfLibraries,
-    ...stats
-  });
+  // console.log({
+  //   daysLeft,
+  //   scannedBooks: [...scannedBooks].length,
+  //   signedUpLibraries: output.length,
+  //   totalBooks: numOfBooks,
+  //   totalLibraries: numOfLibraries,
+  //   ...stats
+  // });
 });
