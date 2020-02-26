@@ -3,8 +3,6 @@ const path = require("path");
 
 const [, , file] = process.argv;
 
-let k = 0.7235;
-
 const printOut = output => {
   const outputFile = file.replace("input", "output").replace(".txt", ".out");
 
@@ -129,7 +127,7 @@ function updateLibraries({ libraries, scannedBooks, daysLeft, bookPoints }) {
 
       return {
         ...library,
-        numOfBooks: libraryBooks.length,
+        numOfLibraryBooks: libraryBooks.length,
         libraryBooks,
         maxPoints,
         availableScanningTime,
@@ -146,10 +144,17 @@ function sortLibraries({ libraries }) {
   return libraries.slice(0).sort(compareFn);
 }
 
-function selectLibrary({ libraries }) {
+function selectLibrary({
+  libraries,
+  avgShipCapacity,
+  avgNumOfLibraryBooks,
+  rate
+}) {
   const max = Math.max(...libraries.map(({ maxPoints }) => maxPoints));
 
-  const index = libraries.findIndex(({ maxPoints }) => maxPoints >= k * max);
+  const index = libraries.findIndex(
+    ({ maxPoints, numOfLibraryBooks }) => maxPoints >= rate * max
+  );
 
   return [
     libraries[index],
@@ -187,9 +192,7 @@ fs.readFile(path.resolve(__dirname, "..", file), "utf-8", (err, data) => {
   } = parseInputData(data);
 
   let { libraries } = restOf;
-
-  const stats = genStats({ libraries, numOfDays });
-
+  const initialStats = genStats({ libraries, numOfDays });
   // console.log({ numOfBooks, numOfLibraries, numOfDays, bookPoints, libraries });
 
   let daysLeft = numOfDays;
@@ -197,8 +200,14 @@ fs.readFile(path.resolve(__dirname, "..", file), "utf-8", (err, data) => {
 
   libraries = sortLibraries({ libraries });
 
+  const rate = 0.69;
   while (daysLeft >= 0) {
-    const [currLib, ...rest] = selectLibrary({ libraries });
+    const stats = genStats({ libraries });
+    const [currLib, ...rest] = selectLibrary({
+      libraries,
+      rate,
+      ...stats
+    });
 
     if (!currLib) {
       console.log("No more libraries are possible");
@@ -207,8 +216,9 @@ fs.readFile(path.resolve(__dirname, "..", file), "utf-8", (err, data) => {
 
     console.log({
       daysLeft,
+	  rate,
       librariesLeft: numOfLibraries - output.length,
-      current: currLib
+      current: currLib,
     });
 
     // add library to output
@@ -248,6 +258,6 @@ fs.readFile(path.resolve(__dirname, "..", file), "utf-8", (err, data) => {
     signedUpLibraries: output.length,
     totalBooks: numOfBooks,
     totalLibraries: numOfLibraries,
-    ...stats
+    ...initialStats
   });
 });
